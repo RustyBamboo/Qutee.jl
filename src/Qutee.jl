@@ -44,7 +44,7 @@ end
 
     Applies an operation to a density matrix.
 """
-function apply(ρ::Array{T,2}, op::Array{S,3}) where {T,S}
+function apply(ρ::AbstractArray{T,2}, op::AbstractArray{S,3}) where {T,S}
     op_conj = conj(op)
     @tullio c[i, k, n] := ρ[i, j] * op_conj[k, j, n]
     @tullio d[i, k] := op[i, j, n] * c[j, k, n]
@@ -54,6 +54,16 @@ end
 
 function apply(ρ::Array{T,2}, op::Array{S,2}) where {T,S}
     return apply(ρ, reshape(op, (size(op)..., 1)))
+end
+
+function Base.:*(K::Array{T,3}, v::Array{S,2}) where {T,S}
+    return apply(v, K)
+end
+
+function Base.adjoint(K::Array{T,3}, v::Array{S,2}) where {T,S}
+    K = mapslices(x -> x', K, dims=(1, 2))
+    return apply(v, K)
+    # return y, Δy -> (nothing, Qutee.apply(v,K))
 end
 
 """
@@ -91,9 +101,9 @@ end
 
 function p_tr(K::Array{T,3}, n, m) where {T}
 
-    j,k,i = size(K)
-    K_tensor = reshape(K, (n,m,n,m,i))
-    @tullio K_ptr[j,k,i] := K_tensor[f,j,f,k,i]
+    j, k, i = size(K)
+    K_tensor = reshape(K, (n, m, n, m, i))
+    @tullio K_ptr[j, k, i] := K_tensor[f, j, f, k, i]
     return K_ptr
 end
 

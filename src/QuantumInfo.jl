@@ -4,10 +4,10 @@ using LinearAlgebra, Tullio
 include("Optimization.jl")
 export Optimization
 
-mat( v::Vector, r=round(Int,sqrt(length(v))), c=round(Int,sqrt(length(v))) ) = reshape( v, r, c )
+mat(v::Vector, r=round(Int, sqrt(length(v))), c=round(Int, sqrt(length(v)))) = reshape(v, r, c)
 
-R = reshape([1. 0 0 1; 0 0 0 0], (2,2,2)) # reset gate
-M = reshape([1 0 0 0; 0 0 0 1], (2,2,2)) # measurement
+R = reshape([1.0 0 0 1; 0 0 0 0], (2, 2, 2)) # reset gate
+M = reshape([1 0 0 0; 0 0 0 1], (2, 2, 2)) # measurement
 
 """
 The Liovulle and Choi representation is related via an involution
@@ -90,6 +90,54 @@ function fidelity(ρ::Matrix, σ::Matrix)
     # Return the squared result
     return abs(result)^2
 end
+
+
+function qubit_density(rhos)
+    """
+        Get the coefficients for Pauli matrices of a single qubit density matrix
+    """
+    purity_s = Float64[]
+    a_s = Float64[]
+    b_s = Float64[]
+    c_s = Float64[]
+
+    for m in rhos
+        a = 2 * real(m[2, 1])
+        b = 2 * imag(m[2, 1])
+        c = 2 * real(m[1, 1]) - 1
+
+        push!(purity_s, abs(tr(m * m)))
+        push!(a_s, a)
+        push!(b_s, b)
+        push!(c_s, real(c))
+    end
+
+    return purity_s, a_s, b_s, c_s
+end
+
+"""
+    power_method(A, v₀, max_iterations=1000, tol=1e-6)
+
+    Uses the power method to compute the largest eigenvalue and eigenvector.
+    Note: the implementation is not optimized, however it works with automatic differentiation
+"""
+function power_method(A, v₀, max_iterations=1000, tol=1e-6)
+
+    for _ = 1:max_iterations
+        w = A * v₀
+        v_new = w / norm(w)
+
+        # Check convergence
+        if norm(v_new - v₀) < tol
+            break
+        end
+        v₀ = v_new
+    end
+
+    λ = dot(v₀, A * v₀)  # Rayleigh quotient
+    return λ, v₀ / tr(v₀)
+end
+
 
 
 end
