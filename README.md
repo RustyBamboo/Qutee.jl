@@ -7,6 +7,8 @@ This code aims to achieve the following goals:
 - Construction of quantum circuits as a quantum channel
 - Riemannian optimization for quantum channel (circuit) optimization
 - Conversion of quantum information forms (Kraus, Choi, Liouville, etc.)
+- Automatic differentiation (AD)
+- GPU support (with AD)
 - And more?
 
 ## Installation
@@ -47,7 +49,40 @@ function circuit_error(U)
     ...
 end
 
-# Optimize using gradient descent over the 
+# Optimize using gradient descent over the Stiefel Manifold
 out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500; η=0.2, decay_factor=0.9, decay_step=10)
 
 ```
+
+**CUDA**
+
+A small benchmark that compares CPU and CUDA in
+1. Matrix-matrix multiplication
+2. Finding the largest eigenpair via the [power method](https://en.wikipedia.org/wiki/Power_iteration) 
+
+```julia
+using LinearAlgebra, Pkg, Plots, BenchmarkTools, CUDA
+using Qutee
+
+function random_vector(K)
+	n,m,_ = size(K)
+	v = rand(n,m) + im * rand(n,m)
+    v /= norm(v)
+end
+
+K_list = [QuantumInfo.rand_channel(2,2^i) for i in 1:11]
+v_list = [random_vector(K) for K in K_list]
+
+cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
+gpu_times = [CUDA.@elapsed cu(K_list[i]) * cu(v_list[i]) for i in 1:length(K_list)]
+p1 = plot([cpu_times, gpu_times], labels=["CPU" "CUDA"], title="Matrix-Matrix Multiplication", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p1, "benchmark1.png")
+
+cpu_times_power = [@elapsed QuantumInfo.power_method(K_list[i], v_list[i], 50) for i in 1:length(K_list)]
+gpu_times_power = [@elapsed QuantumInfo.power_method(cu(K_list[i]), cu(v_list[i]), 50) for i in 1:length(K_list)]
+p2 = plot([cpu_times_power, gpu_times_power], labels=["CPU" "CUDA"], title="Power Method (50 Iterations)", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p2, "benchmark2.png")
+```
+
+![](docs/src/gfx/benchmark1.png)
+![](docs/src/gfx/benchmark2.png)
