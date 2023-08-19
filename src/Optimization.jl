@@ -26,7 +26,7 @@ end
 """
     A simple gradient descent algorithm along manifold
 """
-function optimize(K::Array{T,3}, f, iter=100; η=0.1, decay_factor=0.5, decay_step=10) where {T}
+function optimize(K::AbstractArray{T,3}, f, iter=100; η=0.1, decay_factor=0.5, decay_step=10) where {T}
     history = [f(K)]
     for i in 1:iter
         push!(history, f(K))

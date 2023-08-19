@@ -1,6 +1,5 @@
 module QuantumInfo
-using CUDA, CUDAKernels, KernelAbstractions
-using LinearAlgebra, Tullio
+using LinearAlgebra, TensorOperations, cuTENSOR
 
 include("Optimization.jl")
 export Optimization
@@ -36,7 +35,7 @@ function kraus2liou(K::Array{T,3}) where {T}
 
     K_conj = conj(K)
 
-    @tullio S[j, l, k, m] := K[j, k, i] * K_conj[l, m, i]
+    @tensor S[j, l, k, m] := K[j, k, i] * K_conj[l, m, i]
 
     return reshape(S, (k * j, k * j))
 end
@@ -121,6 +120,7 @@ end
 
     Uses the power method to compute the largest eigenvalue and eigenvector.
     Note: the implementation is not optimized, however it works with automatic differentiation
+    Note: the returned vector may not be a physical density matrix (you may need to divide by tr(out))
 """
 function power_method(A, v₀, max_iterations=1000, tol=1e-6)
 
@@ -129,14 +129,14 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
         v_new = w / norm(w)
 
         # Check convergence
-        # if norm(v_new - v₀) < tol
-            # break
-        # end
+        if norm(v_new - v₀) < tol
+            break
+        end
         v₀ = v_new
     end
 
     λ = dot(v₀, A * v₀)  # Rayleigh quotient
-    return λ, v₀ / tr(v₀)
+    return λ, v₀
 end
 
 
