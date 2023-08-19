@@ -2,6 +2,7 @@
     The QUantum Toolbox
 """
 module Qutee
+using CUDA, CUDAKernels, KernelAbstractions
 using Tullio
 
 include("QuantumInfo.jl")
@@ -52,15 +53,15 @@ function apply(ρ::AbstractArray{T,2}, op::AbstractArray{S,3}) where {T,S}
     # return sum(op .* reshape(ρ,(size(ρ)...,1)) .* conj(permutedims(op, (2,1,3))), dims=3)
 end
 
-function apply(ρ::Array{T,2}, op::Array{S,2}) where {T,S}
+function apply(ρ::AbstractArray{T,2}, op::AbstractArray{S,2}) where {T,S}
     return apply(ρ, reshape(op, (size(op)..., 1)))
 end
 
-function Base.:*(K::Array{T,3}, v::Array{S,2}) where {T,S}
+function Base.:*(K::AbstractArray{T,3}, v::AbstractArray{S,2}) where {T,S}
     return apply(v, K)
 end
 
-function Base.adjoint(K::Array{T,3}, v::Array{S,2}) where {T,S}
+function Base.adjoint(K::AbstractArray{T,3}, v::AbstractArray{S,2}) where {T,S}
     K = mapslices(x -> x', K, dims=(1, 2))
     return apply(v, K)
     # return y, Δy -> (nothing, Qutee.apply(v,K))

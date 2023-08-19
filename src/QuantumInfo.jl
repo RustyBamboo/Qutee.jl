@@ -1,4 +1,5 @@
 module QuantumInfo
+using CUDA, CUDAKernels, KernelAbstractions
 using LinearAlgebra, Tullio
 
 include("Optimization.jl")
@@ -128,9 +129,9 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
         v_new = w / norm(w)
 
         # Check convergence
-        if norm(v_new - v₀) < tol
-            break
-        end
+        # if norm(v_new - v₀) < tol
+            # break
+        # end
         v₀ = v_new
     end
 
