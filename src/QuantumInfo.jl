@@ -1,5 +1,5 @@
 module QuantumInfo
-using LinearAlgebra, TensorOperations, cuTENSOR
+using LinearAlgebra, TensorOperations, CUDA, cuTENSOR
 
 include("Optimization.jl")
 export Optimization
@@ -138,7 +138,5 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
     λ = dot(v₀, A * v₀)  # Rayleigh quotient
     return λ, v₀
 end
-
-
 
 end
