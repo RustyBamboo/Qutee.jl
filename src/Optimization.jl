@@ -24,8 +24,14 @@ function retraction(G::Matrix{T}, K::Matrix{T}, η=0.1) where {T}
     return K - η * grad
 end
 
+"""
+    qr_retraction(G::Matrix{T}, K::Matrix{T}, η=0.01) where {T}
+
+    Perform QR-based retraction. Note that the performance is worse, and requires picking suitable hyperparmeters.
+"""
 function qr_retraction(G::Matrix{T}, K::Matrix{T}, η=0.01) where {T}
     # Compute the perturbed point
+    G = G / norm(G, 2)
     Y = K - η * G
 
     # Perform QR decomposition
@@ -36,14 +42,15 @@ function qr_retraction(G::Matrix{T}, K::Matrix{T}, η=0.01) where {T}
     return Array(q) * D
 end
 
-function qr_retraction(G::CuMatrix{T}, K::CuMatrix{T}, η=0.01f0) where {T}
+function qr_retraction(G::CuMatrix{T}, K::CuMatrix{T}, η::Float32=0.01f0) where {T}
     # Compute the perturbed point
-    Y = CuArray(K - η * G)
+    G = G / norm(G, 2)
+    Y = K - η * G
 
     # Perform QR decomposition
     q, r = qr(Y)
     d = diag(r)
-    D = Diagonal(sign.(sign.(d .+ 1 // 2)))
+    D = Diagonal(sign.(d .+ 1 // 2))
 
     return CuArray(q) * D
 end

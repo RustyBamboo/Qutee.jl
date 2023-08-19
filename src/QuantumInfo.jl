@@ -136,7 +136,7 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
     end
 
     λ = dot(v₀, A * v₀)  # Rayleigh quotient
-    return λ, v₀
+    return λ, v₀ / sum(diag(v₀))
 end
 
 end
