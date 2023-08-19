@@ -63,15 +63,28 @@ function liou2kraus(l::Matrix)
 end
 
 """
+    rand_channel(::Type{Array}, r, n)
+
     Provides a random quantum channel as Kraus operators
 
     r = rank (max should be n^2)
     n = size
 """
-function rand_channel(r, n)
+function rand_channel(::Type{Array}, r, n)
     K = randn(ComplexF64, (r * n, n))
     K = reshape(Matrix(qr(K).Q), (r, n, n))
     return permutedims(K, (2, 3, 1))
+end
+
+"""
+    rand_channel(::Type{CuArray}, r, n)
+
+"""
+function rand_channel(::Type{CuArray}, r, n)
+    # K = randn(ComplexF32, (r * n, n)) |> cu
+    K = CUDA.randn(ComplexF32, (r*n,n))
+    K = reshape(CuArray(qr(K).Q), (r, n, n))
+    return CuArray(permutedims(K, (2, 3, 1)))
 end
 
 
@@ -123,7 +136,7 @@ end
     Note: the returned vector may not be a physical density matrix (you may need to divide by tr(out))
 """
 function power_method(A, v₀, max_iterations=1000, tol=1e-6)
-
+    w = similar(v₀)
     for _ = 1:max_iterations
         w = A * v₀
         v_new = w / norm(w)
