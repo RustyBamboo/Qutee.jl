@@ -9,6 +9,7 @@ This code aims to achieve the following goals:
 - Conversion of quantum information forms (Kraus, Choi, Liouville, etc.)
 - Automatic differentiation (AD)
 - GPU support (with AD)
+- Someday use [Enzyme](https://github.com/EnzymeAD/Enzyme) for AD
 - And more?
 
 ## Installation
