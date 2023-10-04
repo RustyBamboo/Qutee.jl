@@ -82,7 +82,7 @@ end
 """
 function rand_channel(::Type{CuArray}, r, n)
     # K = randn(ComplexF32, (r * n, n)) |> cu
-    K = CUDA.randn(ComplexF32, (r*n,n))
+    K = CUDA.randn(ComplexF32, (r * n, n))
     K = reshape(CuArray(qr(K).Q), (r, n, n))
     return CuArray(permutedims(K, (2, 3, 1)))
 end
@@ -150,6 +150,59 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
 
     λ = dot(v₀, A * v₀)  # Rayleigh quotient
     return λ, v₀ / sum(diag(v₀))
+end
+
+"""
+    arnoldi(A,b,n,m)
+    Thanks Laurent Hoeltgen's blog for explaining how Krylov subspaces work: https://laurenthoeltgen.name/project/num-linalg-opt/
+
+    Uses the arnoldi method to generate the Hessenberg matrix from A, an n x n matrix. 
+    b is a n x 1 vector that we use as our initial guess.
+    m is the number of iterations we do, following a Gram-Schmidt like process.
+
+    Outpts q, a n x m matrix where the m^th column is an n x 1 vector representing the m^th iteration.
+    h is the Hessenberg matrix, which is "almost" triagonal, and is tridiagonal when A is symmetric.
+"""
+function arnoldi(A, b, n, m)
+    # initializes Q and H
+    q = zeros(ComplexF64, n, m)
+    q[:, 1] = b / norm(b)  # sets q1, the first column of Q, as our initial guess
+    h = zeros(ComplexF64, m, m)
+    for j in 1:m-1  # does m-1 iterations
+        t = A * q[:, j]
+        for i in 1:j
+            h[i, j] = q[:, i]' * t   # H[i,j] = qi' * t * qj
+            t = t - h[i, j] * q[:, i]  # Orthogonalizes
+        end
+        h[j+1, j] = norm(t)
+        q[:, j+1] = (t / h[j+1, j])  # finds q for the next iteration
+    end
+    h[:, m] = q' * (A * q[:, m])   # Finishes the final iteration
+    return (q, h)
+end
+
+
+"""
+    arnoldi2eigen(A,b,n,m)
+
+    Finds the eigenvalues and eigenvectors of A, an n x n matrix by using the Arnoldi method.
+    b is an n x 1 vector that serves as our initial guess for the arnoldi method
+    m is the number of iterations we perform (related to how many eigenvectors we want)
+
+    In the arnoldi method, H has the same eigenvalues as A!
+    If we call the eigenvectors of H, v. Then, Qv will give us the eigenvectors of A!
+
+    returns ev, an Array of the eigenvalues, and yeek, an n x m Array of the m eigenvectors, each size n x 1 
+"""
+function arnoldi2eigen(A, b, n, m)
+    q, h = arnoldi(A, b, n, m)  # Finds Q and H from the arnoldi method
+    ev = eigvals(h)  # Eigenvalues of H, same as for A 
+    eek = eigvecs(h)  # Eigenvectors of H, can be modified to produce eigenvectors of A
+    yeek = zeros(ComplexF64, n, m)
+    for i in 1:m
+        yeek[:, i] = q * eek[:, i]  # Qv = eigenvectors of A
+    end
+    return (ev, yeek)
 end
 
 end

@@ -37,7 +37,7 @@ using Qutee
 op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
 
 # A vector of random 2-qubit gates (4x4 unitary matrices)
-rand_U = [reshape(QuantumInfo.rand_channel(1,2^2), (2^2,2^2)) for _ in 1:3]
+rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
 
 # Construction of the circuit
 function circuit(U)
@@ -45,9 +45,12 @@ function circuit(U)
 	return C
 end
 
-# The loss function that we wish to optimize
+# The loss function that we wish to optimize. You can compare to whatever matrix you want.
+# For reference, here I use a simple example where we compare to the identity matrix.
 function circuit_error(U)
-    ...
+    C = circuit(U)  # Creates a circuit from our matrix
+	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
+	return norm(C_L - I)  # Example loss function
 end
 
 # Optimize using gradient descent over the Stiefel Manifold
@@ -71,7 +74,7 @@ function random_vector(K)
     v /= norm(v)
 end
 
-K_list = [QuantumInfo.rand_channel(2,2^i) for i in 1:11]
+K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
 v_list = [random_vector(K) for K in K_list]
 
 cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
@@ -87,3 +90,56 @@ savefig(p2, "benchmark2.png")
 
 ![](docs/src/gfx/benchmark1.png)
 ![](docs/src/gfx/benchmark2.png)
+
+
+## Arnoldi Analysis
+The following code uses the goodness function to assess how effective certain methods are at generating eigenvectors. We will use it to test how well the arnoldi method performs.
+
+```julia
+using Qutee
+
+
+function goodness(standeig, testeig, m)
+    vals = zeros(ComplexF64, 1, m)  # initializes array that will hold accuracy of each eigen pair
+    count = 0
+    for i in 1:m  # iterates through all eigen pairs
+        # compares the last (largest) eigenvalues from standeig and testeig. The closer it is to 1, the more similar the pair is.
+        vals[1, i] = standeig[:, end-i+1]' * testeig[:, end-i+1]
+        if norm(vals[1, i]) > 0.99  # Change this number to whatever percent similarity/accuracy you desire
+            count += 1
+        end
+    end
+    return count
+end
+
+nn = 4  # number of qubits
+cases = 10 # the number of test cases
+comp = zeros((2^nn)^2,1)
+for j in 1:cases
+	En = QuantumInfo.rand_channel(Array, 3, 2^nn)  # Random channel in Kraus representation
+	Ln = QuantumInfo.kraus2liou(En)  # Convert channel to a big matrix representation
+	goal = rand((2^nn)^2)  # Random start vector for arnoldi
+
+	vals, standeig = standardeigen(Ln)  # True eigenvalues to compare to
+	for i in 1:(2^nn)^2
+		testvals, testeig = arnoldi2eigen(Ln,goal,(2^nn)^2,i)  # For each iteration, find arnoldi eigenvalues
+		comp[i,1] += goodness(standeig,testeig,i)  # Store number of matches
+	end
+end	
+comp /= cases  # averages the results
+for i in 1:(2^nn)^2  # prints result for easy copy + paste to store for later
+	print(comp[i,1])
+	print(", ")
+end
+
+# Plotting the results
+```
+![](docs/src/gfx/arnoldi.png)
+
+By plotting the results, we can see that for any number of qubits, the first eigenvalue tends to be found fairly quickly (m < 10). However, finding any more than that takes significantly longer. Also, it is interesting how sporadic the number of eigenvalues found is.
+
+
+## Contributors
+
+- Daniel Volya
+- Andrey Nikitin
