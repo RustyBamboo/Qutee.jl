@@ -37,8 +37,8 @@ using Qutee
 op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
 
 # A vector of random 2-qubit gates (4x4 unitary matrices)
-dummy = Array{}
-rand_U = [reshape(QuantumInfo.rand_channel(dummy,1,2^2), (2^2,2^2)) for _ in 1:3]
+# Note that in the rand_channel I had to pass as Array as my first parameter to specify what type of channel I want
+rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
 
 # Construction of the circuit
 function circuit(U)
@@ -46,9 +46,12 @@ function circuit(U)
 	return C
 end
 
-# The loss function that we wish to optimize
+# The loss function that we wish to optimize. You can compare to whatever matrix you want.
+# For reference, here I use a simple example where we compare to the identity matrix.
 function circuit_error(U)
-    ...
+    C = circuit(U)  # Creates a circuit from our matrix
+	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
+	return norm(C_L - I)  # Example loss function
 end
 
 # Optimize using gradient descent over the Stiefel Manifold
@@ -72,7 +75,8 @@ function random_vector(K)
     v /= norm(v)
 end
 
-K_list = [QuantumInfo.rand_channel(2,2^i) for i in 1:11]
+# Note that I passed a CuArray as the first paramter in rand_channel because I want to create a CUDA channel
+K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
 v_list = [random_vector(K) for K in K_list]
 
 cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
