@@ -37,7 +37,8 @@ using Qutee
 op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
 
 # A vector of random 2-qubit gates (4x4 unitary matrices)
-rand_U = [reshape(QuantumInfo.rand_channel(1,2^2), (2^2,2^2)) for _ in 1:3]
+dummy = Array{}
+rand_U = [reshape(QuantumInfo.rand_channel(dummy,1,2^2), (2^2,2^2)) for _ in 1:3]
 
 # Construction of the circuit
 function circuit(U)
