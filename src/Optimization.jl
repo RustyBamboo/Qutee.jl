@@ -101,8 +101,8 @@ end
 
     Cayley-Adam optimization along a Stiefel manifold.
 
-    K is the initial matrix we are optimizing.
-    f is the loss function used.
+    X is the initial point on the Stiefel matrix manifold we are optimizing.
+    f is the loss function.
     
     epochs is the number of epochs.
     M is the initial value of the first momentum. Its size should match that of X.
