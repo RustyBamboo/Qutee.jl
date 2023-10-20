@@ -93,6 +93,62 @@ function optimize(K::CuArray{T}, f, iter::Int32=Int32(100); retraction=qr_retrac
     return K, history
 end
 
+"""
+    The following function is adapted from the paper "Efficient Riemannian Optimization On The Stiefel Manifold Via The Cayley Transform"
+        by Jun Li, Li Fuxin, Sinisa Todorovic
+
+    optimize(X::Array{T,3}, f, epochs, M, v, l, β_1, β_2, d, d_time, 𝜀, q, s) where {T}
+
+    Cayley-Adam optimization along a Stiefel manifold.
+
+    K is the initial matrix we are optimizing.
+    f is the loss function used.
+    
+    epochs is the number of epochs.
+    M is the initial value of the first momentum. Its size should match that of X.
+    v is the initial vlaue of the second momentum.
+    l is the learning rate. In this case, we use the learning rate along the Stiefel manifold.
+    β_1 is the first momentum coefficient.
+    β_2 is the second momentum coefficient.
+    d is the decay factor of the learning rate.
+    d_time is the epochs at which the decay factor should be applied.
+    𝜀 is a small value used to avoid division by 0.
+    q is a coefficient used when deciding the step size.
+    s is the number of iterations used to estimate the Cayley Transform
+
+    
+    Returns the matrix X after optimization, and a history of the state of X after each epoch.
+"""
+function optimize_adam(X::Array{T,3}, f, epochs = 100, M = zeros(size(X)), v = 1, l = 0.4, β_1 = 0.9, β_2 = 0.99, d = .2, d_time = [30,60,120,160], 𝜀 = 10^-8, q = 0.5, s= 2) where {T}
+    M = kraus2stiefel(M)  # Reshaping the first momentum to its Stiefel form. Allows for operations later.
+	history = [f(X)]  # An array of the state of X at every epoch.
+    for k in 1:epochs  # Iterates for each epoch
+        push!(history, f(X))  # Adds the current state of X to the history
+        # Decays learning rate if appropriate
+        if k in d_time
+            l *= (1-d)
+		end
+        grad = Zygote.gradient(x -> f(x), X)[1]  # Obtains gradient function (takes the Kraus form of X)
+		grad = kraus2stiefel(grad)  # Reshapes the gradient function to its Stiefel form. Allows for operations later.
+		X = kraus2stiefel(X)  # Converts the matrix X to its Stiefel form. Allows for operations later.
+
+        M = β_1 * M + (1-β_1) * grad  # Estimate biased momentum
+        v = β_2 * v + (1-β_2) * norm(grad)^2
+        v_n = v / (1-β_2^k)  # Update biased second raw moment estimate
+        r = (1-β_1^k) * sqrt(v_n+𝜀)  # Estimate biased-corrected ratio
+        W = M * X' - 1/2 * X * (X' * M * X')  # Compute the auxillary skew-symmetric matrix
+        W = (W - W')/r
+        M = r * W * X  # Project momentum onto the tangent space
+        a = min(l, 2q/(norm(W)+𝜀))  # Select adaptive learning rate for contraction mapping
+        Y = X - a * M  # Iterative estimation of the Cayley Transform
+        for i in 1:s
+            Y = X - a/2 * W * (X + Y)
+        end
+        X = Y
+		X = QuantumInfo.Optimization.stiefel2kraus(X)  # Converts X back to Kraus form so gradient can be found in next iteration.
+    end
+    return X, history
+end
 
 """
     Optimization done over batches of Stiefel elements.
