@@ -73,7 +73,7 @@ function num2quat(n::Int, l::Int)::Vector{Int}
     return map(s -> parse(Int, s), collect(string(n, base=4, pad=l)))
 end
 
-function toPauli(p::Vector{Int})::Matrix{Complex{T}} where {T}
+function toPauli(p::Vector{Int})::Matrix{Complex}
     return reduce(kron, [PAULIS[x+1] for x in p])
 end
 
