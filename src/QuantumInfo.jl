@@ -30,7 +30,7 @@ function choi2liou(r::Matrix)
     choi_liou_involution(r)
 end
 
-function kraus2liou(K::Array{T,3}) where {T}
+function kraus2liou(K::AbstractArray{T,3}) where {T}
     j, k, i = size(K)
 
     K_conj = conj(K)
@@ -60,6 +60,56 @@ end
 """
 function liou2kraus(l::Matrix)
     choi2kraus(liou2choi(l))
+end
+
+const PAULIS = [
+    [1 0im; 0 1],
+    [0im 1; 1 0],
+    [0 -im; im 0],
+    [1 0im; 0 -1]
+]
+
+function num2quat(n::Int, l::Int)::Vector{Int}
+    return map(s -> parse(Int, s), collect(string(n, base=4, pad=l)))
+end
+
+function toPauli(p::Vector{Int})::Matrix{Complex{T}} where {T}
+    return reduce(kron, [PAULIS[x+1] for x in p])
+end
+
+"""
+    liou2pauliliou(m::Matrix{T})
+
+Converts a Liouville superoperator in the computational basis to one in the Pauli basis.
+Order of Paulis is I,X,Y and Z.
+
+# Arguments
+- `m`: Matrix to convert.
+
+# Returns
+- Converted matrix.
+"""
+function liou2pauliliou(m::Matrix{T})::Matrix{Float64} where {T}
+    if size(m, 1) != size(m, 2)
+        error("Only square matrices supported")
+    elseif size(m, 1) != 4^(floor(log2(size(m, 1)) / 2))
+        error("Only matrices with dimension 4^n supported.")
+    end
+
+    dsq = size(m, 1)
+    res = zeros(ComplexF64, dsq, dsq)
+    l = round(Int, log2(dsq) / 2)
+    pauliVectors = [vec(toPauli(num2quat(i - 1, l))) for i = 1:dsq]
+    pauliVectorDaggers = [x' for x in pauliVectors]
+    normalization = sqrt(dsq)
+
+    for i = 1:dsq
+        for j = 1:dsq
+            res[i, j] = pauliVectorDaggers[i] * m * pauliVectors[j] / normalization
+        end
+    end
+
+    return real(res)
 end
 
 """
@@ -136,7 +186,7 @@ end
     Note: the returned vector may not be a physical density matrix (you may need to divide by tr(out))
 """
 function power_method(A, v₀, max_iterations=1000, tol=1e-6)
-    w = similar(v₀)
+    # w = similar(v₀)
     for _ = 1:max_iterations
         w = A * v₀
         v_new = w / norm(w)
@@ -149,7 +199,7 @@ function power_method(A, v₀, max_iterations=1000, tol=1e-6)
     end
 
     λ = dot(v₀, A * v₀)  # Rayleigh quotient
-    return λ, v₀ / sum(diag(v₀))
+    return λ, v₀
 end
 
 """
