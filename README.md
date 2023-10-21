@@ -58,6 +58,8 @@ out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500;
 
 ```
 
+![](docs/src/gfx/optimization.png)
+
 **CUDA**
 
 A small benchmark that compares CPU and CUDA in
