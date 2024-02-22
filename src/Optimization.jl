@@ -93,6 +93,47 @@ function optimize(K::CuArray{T}, f, iter::Int32=Int32(100); retraction=qr_retrac
     return K, history
 end
 
+mutable struct AdamCayley{T}
+    X::AbstractArray{T,2}       # The model (element of Stiefel manifold)
+    l::Float64                  # Learning rate
+    β_1::Float64                # Decay rate for the first moment estimates
+    β_2::Float64                # Decay rate for the second moment estimates
+    ϵ::Float64                  # Small number to avoid division by zero
+    M::AbstractArray{T,2}       # First moment vector
+    v::Float64                  # Second moment vector
+    q::Float64                  # Ratio of learning
+    k::Int64                    # Current iteration (for moving exponential)
+    c::Int64                    # Iterations for fixed-point Cayley
+end
+
+function AdamCayley(X::AbstractArray{T,3}; l=0.001, β1=0.9, β2=0.999, ϵ=1e-8) where {T}
+    M = fill!(similar(X), zero(T))
+    M = kraus2stiefel(M)
+    X = kraus2stiefel(X)
+    AdamCayley(X, l, β1, β2, ϵ, M, 1.0, 0.5, 1, 3)
+end
+
+function step!(adam::AdamCayley, grad::AbstractArray{T,2}) where {T}
+    β_1 = adam.β_1
+    β_2 = adam.β_2
+
+    adam.M = β_1 * adam.M + (1 - β_1) * grad  # Estimate biased momentum
+    adam.v = β_2 * adam.v + (1 - β_2) * norm(grad)^2
+    v_n = adam.v / (1 - β_2^adam.k)  # Update biased second raw moment estimate
+    r = (1 - β_1^adam.k) * sqrt(v_n + adam.ϵ)  # Estimate biased-corrected ratio
+    W = adam.M * adam.X' - 1 / 2 * adam.X * (adam.X' * adam.M * adam.X')  # Compute the auxillary skew-symmetric matrix
+    W = (W - W') / r
+    adam.M = r * W * adam.X  # Project momentum onto the tangent space
+    a = min(adam.l, 2adam.q / (norm(W) + adam.ϵ))  # Select adaptive learning rate for contraction mapping
+    Y = adam.X - a * adam.M  # Iterative estimation of the Cayley Transform
+    for _ in 1:adam.c
+        Y = adam.X - a / 2 * W * (adam.X + Y)
+    end
+    adam.X = Y
+    adam.k += 1
+end
+
+
 """
     The following function is adapted from the paper "Efficient Riemannian Optimization On The Stiefel Manifold Via The Cayley Transform"
         by Jun Li, Li Fuxin, Sinisa Todorovic
@@ -119,10 +160,10 @@ end
     
     Returns the matrix X after optimization, and a history of the state of X after each epoch.
 """
-function optimize_adam(X::AbstractArray{T,3}, f, epochs=100, M=fill!(similar(X), zero(T)), v=1, l=0.4, β_1=0.9, β_2=0.99, d=0.2, d_time=[30, 60, 120, 160], 𝜀=10^-8, q=0.5, s=2) where {T}
+function optimize_adam(X::AbstractArray{T,3}, f, epochs=100, M=fill!(similar(X), zero(T)); v=1, l=0.4, β_1=0.9, β_2=0.99, d=0.2, d_time=[30, 60, 120, 160], 𝜀=10^-8, q=0.5, s=2) where {T}
     M = kraus2stiefel(M)  # Reshaping the first momentum to its Stiefel form. Allows for operations later.
     history = [f(X)]  # An array of the state of X at every epoch.
-    @progress for k in 1:epochs  # Iterates for each epoch
+    for k in 1:epochs  # Iterates for each epoch
         push!(history, f(X))  # Adds the current state of X to the history
         # Decays learning rate if appropriate
         if k in d_time

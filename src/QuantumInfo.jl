@@ -1,8 +1,10 @@
 module QuantumInfo
-using LinearAlgebra, TensorOperations, CUDA, cuTENSOR
+using LinearAlgebra, OMEinsum, CUDA
 
 include("Optimization.jl")
+include("Random.jl")
 export Optimization
+export Random
 
 mat(v::Vector, r=round(Int, sqrt(length(v))), c=round(Int, sqrt(length(v)))) = reshape(v, r, c)
 
@@ -15,18 +17,18 @@ The Liovulle and Choi representation is related via an involution
 Dividing Quantum Channels
 Michael M. Wolf, J. Ignacio Cirac
 """
-function choi_liou_involution(r::Matrix)
+function choi_liou_involution(r::AbstractMatrix)
     d = round(Int, sqrt(size(r, 1)))
     rl = reshape(r, (d, d, d, d))
     rl = permutedims(rl, [1, 3, 2, 4])
     reshape(rl, size(r))
 end
 
-function liou2choi(r::Matrix)
+function liou2choi(r::AbstractMatrix)
     choi_liou_involution(r)
 end
 
-function choi2liou(r::Matrix)
+function choi2liou(r::AbstractMatrix)
     choi_liou_involution(r)
 end
 
@@ -35,7 +37,7 @@ function kraus2liou(K::AbstractArray{T,3}) where {T}
 
     K_conj = conj(K)
 
-    @tensor S[j, l, k, m] := K[j, k, i] * K_conj[l, m, i]
+    @ein S[j, l, k, m] := K[j, k, i] * K_conj[l, m, i]
 
     return reshape(S, (k * j, k * j))
 end
@@ -46,7 +48,7 @@ function choi2kraus(r::Matrix{T}) where {T}
     #vals = eigvals( sqrt(size(r,1))*r )
     kraus_ops = Matrix{T}[]
     for i in eachindex(vals)
-        push!(kraus_ops, sqrt(round(vals[i], digits=15, RoundToZero)) * mat(vecs[:, i]))
+        push!(kraus_ops, sqrt(round(vals[i], digits=7, RoundToZero)) * mat(vecs[:, i]))
     end
     factor = tr(sum([k' * k for k in kraus_ops]))
     kraus_ops = kraus_ops / sqrt(factor / d)
