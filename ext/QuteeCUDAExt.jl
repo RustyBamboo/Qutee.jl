@@ -4,8 +4,9 @@ using OMEinsum
 using LinearAlgebra
 
 import Qutee: QuantumInfo
-import Qutee: Optimization
-import Qutee: Random
+import Qutee.QuantumInfo: Optimization, Random
+
+using Zygote, ProgressLogging
 
 """
     rand_channel(::Type{CuArray}, r, n)
