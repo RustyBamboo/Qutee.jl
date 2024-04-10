@@ -11,7 +11,7 @@ using LinearAlgebra
 
 """
 function QuantumInfo.rand_channel(::Type{ROCArray}, r, n)
-    K = AMDGPU.randn(Float32, (r * n, n)) + AMDGPU.randn(Float32, (r * n, n))
+    K = AMDGPU.randn(Float32, (r * n, n)) + 1im*AMDGPU.randn(Float32, (r * n, n))
     K = reshape(ROCArray(qr(0.5*K).Q), (r, n, n))
     return ROCArray(permutedims(K, (2, 3, 1)))
 end
