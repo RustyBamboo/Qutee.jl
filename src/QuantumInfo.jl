@@ -1,5 +1,5 @@
 module QuantumInfo
-using LinearAlgebra, OMEinsum, CUDA
+using LinearAlgebra, OMEinsum
 
 include("Optimization.jl")
 include("Random.jl")
@@ -127,18 +127,6 @@ function rand_channel(::Type{Array}, r, n)
     K = reshape(Matrix(qr(K).Q), (r, n, n))
     return permutedims(K, (2, 3, 1))
 end
-
-"""
-    rand_channel(::Type{CuArray}, r, n)
-
-"""
-function rand_channel(::Type{CuArray}, r, n)
-    # K = randn(ComplexF32, (r * n, n)) |> cu
-    K = CUDA.randn(ComplexF32, (r * n, n))
-    K = reshape(CuArray(qr(K).Q), (r, n, n))
-    return CuArray(permutedims(K, (2, 3, 1)))
-end
-
 
 function fidelity(ρ::Matrix, σ::Matrix)
     # Calculate the square root of ρ

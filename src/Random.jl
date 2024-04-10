@@ -1,12 +1,8 @@
 module Random
-using LinearAlgebra, CUDA, OMEinsum
+using LinearAlgebra, OMEinsum
 
 function ginibre_matrix(::Type{Array}, d, k)
     return randn(ComplexF64, (d, k)) + im * randn(ComplexF64, (d, k))
-end
-
-function ginibre_matrix(::Type{CuArray}, d, k)
-    return CUDA.randn(ComplexF64, (d, k)) + im * CUDA.randn(ComplexF64, (d, k))
 end
 
 

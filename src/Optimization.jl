@@ -1,6 +1,5 @@
 module Optimization
 
-using CUDA
 using LinearAlgebra, Zygote, ProgressLogging
 
 export kraus2stiefel
@@ -37,22 +36,10 @@ function qr_retraction(G::Matrix{T}, K::Matrix{T}, η=0.01) where {T}
     # Perform QR decomposition
     q, r = qr(Y)
     d = diag(r)
-    D = Diagonal(sign.(sign.(d .+ 1 // 2)))
-
-    return Array(q) * D
-end
-
-function qr_retraction(G::CuMatrix{T}, K::CuMatrix{T}, η::Float32=0.01f0) where {T}
-    # Compute the perturbed point
-    G = G / norm(G, 2)
-    Y = K - η * G
-
-    # Perform QR decomposition
-    q, r = qr(Y)
-    d = diag(r)
     D = Diagonal(sign.(d .+ 1 // 2))
 
-    return CuArray(q) * D
+
+    return Array(q) * D
 end
 
 """
@@ -75,23 +62,6 @@ function optimize(K::Array{T,3}, f, iter=100; retraction=retraction, η=0.1, dec
     return K, history
 end
 
-"""
-    optimize(K::CuArray{T,3}, f, iter::Int32=Int32(100); retraction=qr_retraction, η::Float32=0.1f0, decay_factor::Float32=0.5f0, decay_step::Int32=Int32(10)) where {T}
-"""
-function optimize(K::CuArray{T}, f, iter::Int32=Int32(100); retraction=qr_retraction, η::Float32=0.1f0, decay_factor::Float32=0.5f0, decay_step::Int32=Int32(10)) where {T}
-    history = [f(K)]
-    @progress for i in 1:iter
-        push!(history, f(K))
-        grad = Zygote.gradient(x -> f(x), K)[1]
-        K = retraction(kraus2stiefel(grad), kraus2stiefel(K), η)
-        K = stiefel2kraus(K)
-        # Apply step decay every decay_step iterations
-        if i % decay_step == 0
-            η *= decay_factor
-        end
-    end
-    return K, history
-end
 
 mutable struct AdamCayley{T}
     X::AbstractArray{T,2}       # The model (element of Stiefel manifold)
