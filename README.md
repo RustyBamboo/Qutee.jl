@@ -1,7 +1,10 @@
-# Qutee.jl
+![](docs/src/gfx/QuTee.png)
+*An opinionated Quantum Toolbox*
 
 > [!WARNING]  
 > This is research software. Not all features are implemented or optimized. 
+
+Qutee.jl contains various tools for working with quantum channels. You can think of a quantum channel as a set of matrices that when applied to one quantum state, transform it to another. Thus, understanding the quantum channel is crucial for understanding how a quantum system evolves.
 
 This code aims to achieve the following goals:
 - Construction of quantum circuits as a quantum channel
@@ -26,7 +29,41 @@ or
 pkg> add https://github.com/RustyBamboo/Qutee.jl
 ```
 
-## Examples
+# Tools
+
+In this section, we outline the functionality of the code so you can find the best tool for the job!
+
+Generally, the code is organized into the following files:
+- **Optimization.jl** contains the functions necessarry for performing Quantum Process Tomography via gradient descent.
+- **QuantumInfo.jl** converts between the many representations of a quantum channel and includes methods for finding the largest eigenvalues and eigenvectors of the quantum channel.
+- **Qutee.jl** handles the math associated with quantum channels.
+- **Random.jl** is used for generating random channels.
+
+## Channel representations
+
+A quantum channel maps one quantum state to another and is often represented as a set of matrices. The channel can be expressed in different forms to highlight different properties:
+- The **Kraus** form is more convenient for computations. This form consists of multiple square matrices of size $2^N$ where $N$ is the number of qubits. The number of matrices used is known as the *kraus rank*. The maximum kraus rank needed to fully describe a quantum channel is $4^N$.
+- The **Liouville** form is better for visualizing the channel.
+- The **Choi** form can be treated as a quantum state via the Choi-jamiolkowski isomorphism. This allows us to use metrics such as state fidelity to compare two quantum channels.
+Keep in mind that all of these forms include matrices consisting of complex elements. However, complex numbers can be annoying to work with, so a quantum channel can always be converted to the **Pauli basis**, where all elements are real.
+
+Now let's put these ideas in practice! First, we need to generate a quantum channel. We could use `Random.rand_channel(Array,4^N,2^N)`, but that would create a Choi matrix. Here we will use `QuantumInfo.rand_channel(Array,4^N,2^N)` so that we get the channel in Kraus form. *Note:* if you wanted to use a GPU, you would use CuArray instead of Array as the first argument.
+
+## Eigenstates
+
+Understanding the long-term dynamics of a system is often important for Petz recovery maps, quantum-error ccorrection, and measurement-induced steering for state preparation. We can ascertain how a circuit will behave in the long-term by repeatedly applying the quantum channel $\mathcal{E}$. Thus, it becomes important to find the largest eigenvalues and corresponding eigenstates, as they define the asymptotic projection of the channel.
+
+QuantumInfo.jl includes two methods for finding the eigenstates of a quantum channel. For both methods, the first argument is the quantum channel and the second argument is an inital guess for the eigenvector:
+- power_method(A, v₀) utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
+- arnoldi2eigen(A,b,n,m) utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
+
+## Quantum Process Tomography
+
+Given an initial and final quantum state, the goal of Quantum Process Tomography(QPT) is the figure out what the quantum channel is. While methods such as linear inversion and convex hull optimization are used in other QPT libraries, they are too slow for systems larger than 3 qubits and require the informationally-complete set of measurements in order to produce a solution, which can get costly. Instead, Optimization.jl utilizes gradient descent to find the quantum channel. 
+
+However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in a Steifel manifold. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
+
+# Examples
 
 **Circuit Optimization**
 
