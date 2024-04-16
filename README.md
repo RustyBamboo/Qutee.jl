@@ -88,17 +88,16 @@ krausChan = QuantumInfo.choi2kraus(choiChan)
 
 # Finally, let's convert it to Liou form to visualize the channel
 L = QuantumInfo.kraus2liou(K)
-L = QuantumInfo.liou2pauliliou(L)  # Displaying complex numbers is hard, so we convert to Pauli basis
 
 # Now let's demonstrate isolating a specific component of the channel, such as noise
 realL = QuantumInfo.kraus2liou(QuantumInfo.rand_channel(Array,4^N,2^N))
 noise = L - realL
+noise = QuantumInfo.liou2pauliliou(noise)  # Displaying complex numbers is difficult, so we convert to Pauli basis
 
 # Plot results
 ```
+![](docs/src/gfx/heatmap_plot.png)
 
-
-*Note:* if you wanted to use a GPU, you would use CuArray instead of Array as the first argument.
 
 ## Eigenstates
 
