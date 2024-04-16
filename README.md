@@ -105,7 +105,7 @@ Understanding the long-term dynamics of a system is often important for Petz rec
 
 QuantumInfo.jl includes two methods for finding the eigenstates of a quantum channel. For both methods, the first argument is the quantum channel and the second argument is an inital guess for the eigenvector:
 - `power_method(A, v₀)` utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
-- `arnoldi2eigen(A,b,n,m)` utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
+- `arnoldi2eigen(A,b,n,m)` utilizes the **Krylov subspace** to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
 
 <ins>**Arnoldi Analysis**</ins>
 
@@ -154,6 +154,40 @@ end
 
 By plotting the results, we can see that for any number of qubits, the first eigenvalue tends to be found fairly quickly (m < 10). However, finding any more than that takes significantly longer. Also, it is interesting how sporadic the number of eigenvalues found is.
 
+<ins>**CUDA**</ins>
+
+A small benchmark that compares CPU and CUDA in
+1. Matrix-matrix multiplication
+2. Finding the largest eigenpair via the [power method](https://en.wikipedia.org/wiki/Power_iteration) 
+
+```julia
+using LinearAlgebra, Pkg, Plots, BenchmarkTools, CUDA
+using Qutee
+
+function random_vector(K)
+	n,m,_ = size(K)
+	v = rand(n,m) + im * rand(n,m)
+    v /= norm(v)
+end
+
+K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
+v_list = [random_vector(K) for K in K_list]
+
+cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
+gpu_times = [CUDA.@elapsed cu(K_list[i]) * cu(v_list[i]) for i in 1:length(K_list)]
+p1 = plot([cpu_times, gpu_times], labels=["CPU" "CUDA"], title="Matrix-Matrix Multiplication", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p1, "benchmark1.png")
+
+cpu_times_power = [@elapsed QuantumInfo.power_method(K_list[i], v_list[i], 50) for i in 1:length(K_list)]
+gpu_times_power = [@elapsed QuantumInfo.power_method(cu(K_list[i]), cu(v_list[i]), 50) for i in 1:length(K_list)]
+p2 = plot([cpu_times_power, gpu_times_power], labels=["CPU" "CUDA"], title="Power Method (50 Iterations)", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p2, "benchmark2.png")
+```
+
+![](docs/src/gfx/benchmark1.png)
+![](docs/src/gfx/benchmark2.png)
+
+
 
 ## Quantum Process Tomography
 
@@ -194,40 +228,6 @@ out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500;
 ```
 
 ![](docs/src/gfx/optimization.png)
-
-<ins>**CUDA**</ins>
-
-A small benchmark that compares CPU and CUDA in
-1. Matrix-matrix multiplication
-2. Finding the largest eigenpair via the [power method](https://en.wikipedia.org/wiki/Power_iteration) 
-
-```julia
-using LinearAlgebra, Pkg, Plots, BenchmarkTools, CUDA
-using Qutee
-
-function random_vector(K)
-	n,m,_ = size(K)
-	v = rand(n,m) + im * rand(n,m)
-    v /= norm(v)
-end
-
-K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
-v_list = [random_vector(K) for K in K_list]
-
-cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
-gpu_times = [CUDA.@elapsed cu(K_list[i]) * cu(v_list[i]) for i in 1:length(K_list)]
-p1 = plot([cpu_times, gpu_times], labels=["CPU" "CUDA"], title="Matrix-Matrix Multiplication", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
-savefig(p1, "benchmark1.png")
-
-cpu_times_power = [@elapsed QuantumInfo.power_method(K_list[i], v_list[i], 50) for i in 1:length(K_list)]
-gpu_times_power = [@elapsed QuantumInfo.power_method(cu(K_list[i]), cu(v_list[i]), 50) for i in 1:length(K_list)]
-p2 = plot([cpu_times_power, gpu_times_power], labels=["CPU" "CUDA"], title="Power Method (50 Iterations)", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
-savefig(p2, "benchmark2.png")
-```
-
-![](docs/src/gfx/benchmark1.png)
-![](docs/src/gfx/benchmark2.png)
-
 
 
 
