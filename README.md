@@ -195,7 +195,10 @@ Given an initial and final quantum state, the goal of Quantum Process Tomography
 
 However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in the *Steifel manifold*. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
 
-
+Qutee offers a few methods for QPT:
+- `optimize(K, f)` uses naive gradient descent. You can specify the retraction use as either `retraction` or `qr_retraction`
+- `optimize_adam(K, f)` uses Adam-Cayley gradient descent, which implicitly performs the retraction as it steps.
+- `AdamCayley(K)` is a wrapper class for `optimize_adam(K,f)` that allows for easier implementation!
 
 <ins>**Circuit Optimization**</ins>
 
