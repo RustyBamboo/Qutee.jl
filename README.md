@@ -126,7 +126,7 @@ However, simple gradient descent will not suffice! That is because gradient desc
 
 
 
-**Circuit Optimization**
+<ins>**Circuit Optimization**</ins>
 
 ```julia
 using Qutee
@@ -158,7 +158,7 @@ out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500;
 
 ![](docs/src/gfx/optimization.png)
 
-**CUDA**
+<ins>**CUDA**</ins>
 
 A small benchmark that compares CPU and CUDA in
 1. Matrix-matrix multiplication
