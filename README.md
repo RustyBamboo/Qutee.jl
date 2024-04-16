@@ -1,13 +1,23 @@
-![](docs/src/gfx/QuTee.png)
-*An opinionated Quantum Toolbox*
+<div align = center>
+
+<img src="https://raw.githubusercontent.com/RustyBamboo/Qutee.jl/main/gfx/logo.png" width="550" height="230" alt="banner">
+
+<br>
+
+<i>An opinionated Quantum Toolbox</i>
+
+</div>
+
+# Qutee.jl
 
 > [!WARNING]  
 > This is research software. Not all features are implemented or optimized. 
 
-Qutee.jl contains various tools for working with **quantum channels**. You can think of a quantum channel as a set of matrices that when applied to one quantum state, transform it to another. Thus, understanding the quantum channel is crucial for understanding how a quantum system evolves.
+Qutee.jl is a toolbox for studying and simulating aspects of quantum information.
 
 This code aims to achieve the following goals:
 - Construction of quantum circuits as a quantum channel
+- Spectral analysis of quantum dynamical maps
 - Riemannian optimization for quantum channel (circuit) optimization
 - Conversion of quantum information forms (Kraus, Choi, Liouville, etc.)
 - Automatic differentiation (AD)
