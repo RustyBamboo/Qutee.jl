@@ -52,96 +52,63 @@ Generally, the code is organized into the following files:
 ## Channel representations
 
 A quantum channel maps one quantum state to another and is often represented as a set of matrices. The channel can be expressed in different forms to highlight different properties:
-- The **Kraus** form is more convenient for computations. This form consists of multiple square matrices of size $2^N$ where $N$ is the number of qubits. The number of matrices used is known as the *kraus rank*. The maximum kraus rank needed to fully describe a quantum channel is $4^N$.
+- The **Kraus** form is more convenient for computations. This form consists of multiple square matrices of size $2^N\times2^N$ where $N$ is the number of qubits. 
+The number of matrices used is known as the *kraus rank*. The maximum kraus rank needed to fully describe a quantum channel is $4^N$.
 - The **Liouville** form is better for visualizing the channel.
 - The **Choi** form can be treated as a quantum state via the Choi-jamiolkowski isomorphism. This allows us to use metrics such as state fidelity to compare two quantum channels.
+
 Keep in mind that all of these forms include matrices consisting of complex elements. However, complex numbers can be annoying to work with, so a quantum channel can always be converted to the **Pauli basis**, where all elements are real.
 
-Now let's put these ideas in practice! First, we need to generate a quantum channel. We could use `Random.rand_channel(Array,4^N,2^N)`, but that would create a Choi matrix. Here we will use `QuantumInfo.rand_channel(Array,4^N,2^N)` so that we get the channel in Kraus form. *Note:* if you wanted to use a GPU, you would use CuArray instead of Array as the first argument.
+Now let's put these ideas in practice!
+
+```julia
+using Qutee, LinearAlgebra
+
+# First, we generate a quantum channel
+
+N = 2  # Number of qubits
+
+# Generate a random channel in Kraus representation
+K = QuantumInfo.rand_channel(Array, 4^N, 2^N)  # Note: use CuArray as first argument if using GPU
+
+# We could also generate a Choi matrix and then convert it to Kraus
+choiChan = QuantumInfo.Random.rand_channel(Array,4^N,2^N)
+krausChan = QuantumInfo.choi2kraus(choiChan)
+
+
+# Now, we need a quantum state to apply our channel to
+
+# Since the Choi representation is isomorphic to a quantum state, we can use it to generate our density state matrix!
+ρ = QuantumInfo.Random.rand_channel(Array,4^div(N,2),2^(div(N,2)))
+ρ = ρ/tr(ρ)  # Needs trace of 1
+
+# Apply our channel to our quantum state
+ρ = Qutee.apply(ρ,K)
+
+
+# Finally, let's convert it to Liou form to visualize the channel
+L = QuantumInfo.kraus2liou(K)
+
+# Now let's demonstrate isolating a specific component of the channel, such as noise
+realL = QuantumInfo.kraus2liou(QuantumInfo.rand_channel(Array,4^N,2^N))
+noise = L - realL
+noise = QuantumInfo.liou2pauliliou(noise)  # Displaying complex numbers is difficult, so we convert to Pauli basis
+
+# Plot results
+```
+![](docs/src/gfx/heatmap_plot.png)
+
 
 ## Eigenstates
 
-Understanding the long-term dynamics of a system is often important for Petz recovery maps, quantum-error ccorrection, and measurement-induced steering for state preparation. We can ascertain how a circuit will behave in the long-term by repeatedly applying the quantum channel $\mathcal{E}$. Thus, it becomes important to find the largest eigenvalues and corresponding eigenstates, as they define the asymptotic projection of the channel.
+Understanding the long-term dynamics of a system is often important for Petz recovery maps, quantum-error correction, and measurement-induced steering for state preparation. We can ascertain how a circuit will behave in the long-term by repeatedly applying the quantum channel $\mathcal{E}$. Thus, it becomes important to find the largest eigenvalues and corresponding eigenstates, as they define the asymptotic projection of the channel.
 
 QuantumInfo.jl includes two methods for finding the eigenstates of a quantum channel. For both methods, the first argument is the quantum channel and the second argument is an inital guess for the eigenvector:
-- power_method(A, v₀) utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
-- arnoldi2eigen(A,b,n,m) utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
+- `power_method(A, v₀)` utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
+- `arnoldi2eigen(A,b,n,m)` utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
 
-## Quantum Process Tomography
+<ins>**Arnoldi Analysis**</ins>
 
-Given an initial and final quantum state, the goal of Quantum Process Tomography(QPT) is the figure out what the quantum channel is. While methods such as linear inversion and convex hull optimization are used in other QPT libraries, they are too slow for systems larger than 3 qubits and require the informationally-complete set of measurements in order to produce a solution, which can get costly. Instead, Optimization.jl utilizes gradient descent to find the quantum channel. 
-
-However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in a Steifel manifold. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
-
-# Examples
-
-**Circuit Optimization**
-
-```julia
-using Qutee
-
-# 2-qubit operation: Qubit reset and Identity
-op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
-
-# A vector of random 2-qubit gates (4x4 unitary matrices)
-rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
-
-# Construction of the circuit
-function circuit(U)
-	C = mapreduce(x->op⊙x, ⊙, U)
-	return C
-end
-
-# The loss function that we wish to optimize. You can compare to whatever matrix you want.
-# For reference, here I use a simple example where we compare to the identity matrix.
-function circuit_error(U)
-    C = circuit(U)  # Creates a circuit from our matrix
-	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
-	return norm(C_L - I)  # Example loss function
-end
-
-# Optimize using gradient descent over the Stiefel Manifold
-out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500; η=0.2, decay_factor=0.9, decay_step=10)
-
-```
-
-![](docs/src/gfx/optimization.png)
-
-**CUDA**
-
-A small benchmark that compares CPU and CUDA in
-1. Matrix-matrix multiplication
-2. Finding the largest eigenpair via the [power method](https://en.wikipedia.org/wiki/Power_iteration) 
-
-```julia
-using LinearAlgebra, Pkg, Plots, BenchmarkTools, CUDA
-using Qutee
-
-function random_vector(K)
-	n,m,_ = size(K)
-	v = rand(n,m) + im * rand(n,m)
-    v /= norm(v)
-end
-
-K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
-v_list = [random_vector(K) for K in K_list]
-
-cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
-gpu_times = [CUDA.@elapsed cu(K_list[i]) * cu(v_list[i]) for i in 1:length(K_list)]
-p1 = plot([cpu_times, gpu_times], labels=["CPU" "CUDA"], title="Matrix-Matrix Multiplication", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
-savefig(p1, "benchmark1.png")
-
-cpu_times_power = [@elapsed QuantumInfo.power_method(K_list[i], v_list[i], 50) for i in 1:length(K_list)]
-gpu_times_power = [@elapsed QuantumInfo.power_method(cu(K_list[i]), cu(v_list[i]), 50) for i in 1:length(K_list)]
-p2 = plot([cpu_times_power, gpu_times_power], labels=["CPU" "CUDA"], title="Power Method (50 Iterations)", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
-savefig(p2, "benchmark2.png")
-```
-
-![](docs/src/gfx/benchmark1.png)
-![](docs/src/gfx/benchmark2.png)
-
-
-## Arnoldi Analysis
 The following code uses the goodness function to assess how effective certain methods are at generating eigenvectors. We will use it to test how well the arnoldi method performs.
 
 ```julia
@@ -186,6 +153,82 @@ end
 ![](docs/src/gfx/arnoldi.png)
 
 By plotting the results, we can see that for any number of qubits, the first eigenvalue tends to be found fairly quickly (m < 10). However, finding any more than that takes significantly longer. Also, it is interesting how sporadic the number of eigenvalues found is.
+
+
+## Quantum Process Tomography
+
+Given an initial and final quantum state, the goal of Quantum Process Tomography(QPT) is to figure out what the quantum channel is. While methods such as linear inversion and convex hull optimization are used in other QPT libraries, they are too slow for systems larger than 3 qubits and require the informationally-complete set of measurements in order to produce a solution, which can get costly. Instead, Optimization.jl utilizes gradient descent to find the quantum channel. 
+
+However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in the *Steifel manifold*. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
+
+
+
+<ins>**Circuit Optimization**</ins>
+
+```julia
+using Qutee
+
+# 2-qubit operation: Qubit reset and Identity
+op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
+
+# A vector of random 2-qubit gates (4x4 unitary matrices)
+rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
+
+# Construction of the circuit
+function circuit(U)
+	C = mapreduce(x->op⊙x, ⊙, U)
+	return C
+end
+
+# The loss function that we wish to optimize. You can compare to whatever matrix you want.
+# For reference, here I use a simple example where we compare to the identity matrix.
+function circuit_error(U)
+    C = circuit(U)  # Creates a circuit from our matrix
+	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
+	return norm(C_L - I)  # Example loss function
+end
+
+# Optimize using gradient descent over the Stiefel Manifold
+out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500; η=0.2, decay_factor=0.9, decay_step=10)
+
+```
+
+![](docs/src/gfx/optimization.png)
+
+<ins>**CUDA**</ins>
+
+A small benchmark that compares CPU and CUDA in
+1. Matrix-matrix multiplication
+2. Finding the largest eigenpair via the [power method](https://en.wikipedia.org/wiki/Power_iteration) 
+
+```julia
+using LinearAlgebra, Pkg, Plots, BenchmarkTools, CUDA
+using Qutee
+
+function random_vector(K)
+	n,m,_ = size(K)
+	v = rand(n,m) + im * rand(n,m)
+    v /= norm(v)
+end
+
+K_list = [QuantumInfo.rand_channel(CuArray,2,2^i) for i in 1:11]
+v_list = [random_vector(K) for K in K_list]
+
+cpu_times = [@elapsed K_list[i] * v_list[i] for i in 1:length(K_list)]
+gpu_times = [CUDA.@elapsed cu(K_list[i]) * cu(v_list[i]) for i in 1:length(K_list)]
+p1 = plot([cpu_times, gpu_times], labels=["CPU" "CUDA"], title="Matrix-Matrix Multiplication", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p1, "benchmark1.png")
+
+cpu_times_power = [@elapsed QuantumInfo.power_method(K_list[i], v_list[i], 50) for i in 1:length(K_list)]
+gpu_times_power = [@elapsed QuantumInfo.power_method(cu(K_list[i]), cu(v_list[i]), 50) for i in 1:length(K_list)]
+p2 = plot([cpu_times_power, gpu_times_power], labels=["CPU" "CUDA"], title="Power Method (50 Iterations)", xlabel="# of Qubits", ylabel="Time [s]", markershape=:xcross)
+savefig(p2, "benchmark2.png")
+```
+
+![](docs/src/gfx/benchmark1.png)
+![](docs/src/gfx/benchmark2.png)
+
+
 
 
 ## Contributors
