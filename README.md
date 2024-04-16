@@ -70,7 +70,8 @@ QuantumInfo.jl includes two methods for finding the eigenstates of a quantum cha
 - `power_method(A, v₀)` utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
 - `arnoldi2eigen(A,b,n,m)` utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
 
-**Arnoldi Analysis**
+<ins>**Arnoldi Analysis**</ins>
+
 The following code uses the goodness function to assess how effective certain methods are at generating eigenvectors. We will use it to test how well the arnoldi method performs.
 
 ```julia
