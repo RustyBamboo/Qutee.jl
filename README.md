@@ -59,15 +59,43 @@ The number of matrices used is known as the *kraus rank*. The maximum kraus rank
 
 Keep in mind that all of these forms include matrices consisting of complex elements. However, complex numbers can be annoying to work with, so a quantum channel can always be converted to the **Pauli basis**, where all elements are real.
 
-Now let's put these ideas in practice! We will perform the following steps:
-1. First, we generate a quantum channel. We will use `QuantumInfo.rand_channel(Array,4^N,2^N)` so that we get the channel in Kraus form. Note that we could also use `Random.rand_channel(Array,4^N,2^N)`, which would create a Choi matrix. We could then convert this Choi matrix to its Kraus form using `QuantumInfo.choi2kraus`. 
-- Get the density state matrix from a circuit
-- Apply our channel to the circuit
-2. Now, let's convert our channel to its Liouville representation
-- Convert to Pauli basis
-- Visualize (in Python?)
-3. Finally, let's convert our channel to its Choi representation
-- Generate another channel to represent 'ideal' and subtract to isolate 'noise'
+Now let's put these ideas in practice!
+
+```julia
+using Qutee, LinearAlgebra
+
+# First, we generate a quantum channel
+
+N = 2  # Number of qubits
+
+# Generate a random channel in Kraus representation
+K = QuantumInfo.rand_channel(Array, 4^N, 2^N)  # Note: use CuArray as first argument if using GPU
+
+# We could also generate a Choi matrix and then convert it to Kraus
+choiChan = QuantumInfo.Random.rand_channel(Array,4^N,2^N)
+krausChan = QuantumInfo.choi2kraus(choiChan)
+
+
+# Now, we need a quantum state to apply our channel to
+
+# Since the Choi representation is isomorphic to a quantum state, we can use it to generate our density state matrix!
+ρ = QuantumInfo.Random.rand_channel(Array,4^div(N,2),2^(div(N,2)))
+ρ = ρ/tr(ρ)  # Needs trace of 1
+
+# Apply our channel to our quantum state
+ρ = Qutee.apply(ρ,K)
+
+
+# Finally, let's convert it to Liou form to visualize the channel
+L = QuantumInfo.kraus2liou(K)
+L = QuantumInfo.liou2pauliliou(L)  # Displaying complex numbers is hard, so we convert to Pauli basis
+
+# Now let's demonstrate isolating a specific component of the channel, such as noise
+realL = QuantumInfo.kraus2liou(QuantumInfo.rand_channel(Array,4^N,2^N))
+noise = L - realL
+
+# Plot results
+```
 
 
 *Note:* if you wanted to use a GPU, you would use CuArray instead of Array as the first argument.
