@@ -1,12 +1,18 @@
 <div align = center>
 
-<img src="https://raw.githubusercontent.com/RustyBamboo/Qutee.jl/main/gfx/logo.png" width="550" height="230" alt="banner">
+<img src="https://raw.githubusercontent.com/RustyBamboo/Qutee.jl/main/gfx/logo.png" height="200" alt="banner">
 
 <br>
 
 <i>An opinionated Quantum Toolbox</i>
 
+
+
+| Quantum Tomography    | Quantum Channel Analysis | Julia and JuliaGPU |
+|  :----: |  :----: |  :----: |
+| <img src="https://raw.githubusercontent.com/RustyBamboo/Qutee.jl/main/gfx/manifold.jpg" height="150">  | <img src="https://raw.githubusercontent.com/RustyBamboo/Qutee.jl/main/gfx/channel_spectral.png" height="150"> | <img src="https://juliagpu.org/assets/logo_crop.png" height="150"> |
 </div>
+
 
 # Qutee.jl
 
