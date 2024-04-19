@@ -105,7 +105,7 @@ Understanding the long-term dynamics of a system is often important for Petz rec
 
 QuantumInfo.jl includes two methods for finding the eigenstates of a quantum channel. For both methods, the first argument is the quantum channel and the second argument is an inital guess for the eigenvector:
 - `power_method(A, v₀)` utilizes the power method to compute the largest eigenvalue and eigenvector. While simplistic, this method can get computationally intensive and only finds **the** maximum eigenvalue.
-- `arnoldi2eigen(A,b,n,m)` utilizes the Krylov subspace to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
+- `arnoldi2eigen(A,b,n,m)` utilizes the **Krylov subspace** to efficiently find the largest eigenvalues and eigenvectors. As the number of iterations used increases, so does the number of eigenvalues found.
 
 <ins>**Arnoldi Analysis**</ins>
 
@@ -154,47 +154,6 @@ end
 
 By plotting the results, we can see that for any number of qubits, the first eigenvalue tends to be found fairly quickly (m < 10). However, finding any more than that takes significantly longer. Also, it is interesting how sporadic the number of eigenvalues found is.
 
-
-## Quantum Process Tomography
-
-Given an initial and final quantum state, the goal of Quantum Process Tomography(QPT) is to figure out what the quantum channel is. While methods such as linear inversion and convex hull optimization are used in other QPT libraries, they are too slow for systems larger than 3 qubits and require the informationally-complete set of measurements in order to produce a solution, which can get costly. Instead, Optimization.jl utilizes gradient descent to find the quantum channel. 
-
-However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in the *Steifel manifold*. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
-
-
-
-<ins>**Circuit Optimization**</ins>
-
-```julia
-using Qutee
-
-# 2-qubit operation: Qubit reset and Identity
-op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
-
-# A vector of random 2-qubit gates (4x4 unitary matrices)
-rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
-
-# Construction of the circuit
-function circuit(U)
-	C = mapreduce(x->op⊙x, ⊙, U)
-	return C
-end
-
-# The loss function that we wish to optimize. You can compare to whatever matrix you want.
-# For reference, here I use a simple example where we compare to the identity matrix.
-function circuit_error(U)
-    C = circuit(U)  # Creates a circuit from our matrix
-	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
-	return norm(C_L - I)  # Example loss function
-end
-
-# Optimize using gradient descent over the Stiefel Manifold
-out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500; η=0.2, decay_factor=0.9, decay_step=10)
-
-```
-
-![](docs/src/gfx/optimization.png)
-
 <ins>**CUDA**</ins>
 
 A small benchmark that compares CPU and CUDA in
@@ -228,6 +187,50 @@ savefig(p2, "benchmark2.png")
 ![](docs/src/gfx/benchmark1.png)
 ![](docs/src/gfx/benchmark2.png)
 
+
+
+## Quantum Process Tomography
+
+Given an initial and final quantum state, the goal of Quantum Process Tomography(QPT) is to figure out what the quantum channel is. While methods such as linear inversion and convex hull optimization are used in other QPT libraries, they are too slow for systems larger than 3 qubits and require the informationally-complete set of measurements in order to produce a solution, which can get costly. Instead, Optimization.jl utilizes gradient descent to find the quantum channel. 
+
+However, simple gradient descent will not suffice! That is because gradient descent assumes a Euclidean geometry, but quantum channels exist in the *Steifel manifold*. Thus, the optimizer's steps must be projected back onto the Stiefel manifold, which is approximated through a **retraction**.
+
+Qutee offers a few methods for QPT:
+- `optimize(K, f)` uses naive gradient descent. You can specify the retraction use as either `retraction` or `qr_retraction`
+- `optimize_adam(K, f)` uses Adam-Cayley gradient descent, which implicitly performs the retraction as it steps.
+- `AdamCayley(K)` is a wrapper class for `optimize_adam(K,f)` that allows for easier implementation!
+
+<ins>**Circuit Optimization**</ins>
+
+```julia
+using Qutee
+
+# 2-qubit operation: Qubit reset and Identity
+op = (QuantumInfo.R ⊗ [1 0; 0 1]) 
+
+# A vector of random 2-qubit gates (4x4 unitary matrices)
+rand_U = [reshape(QuantumInfo.rand_channel(Array,1,2^2), (2^2,2^2)) for _ in 1:3]
+
+# Construction of the circuit
+function circuit(U)
+	C = mapreduce(x->op⊙x, ⊙, U)
+	return C
+end
+
+# The loss function that we wish to optimize. You can compare to whatever matrix you want.
+# For reference, here I use a simple example where we compare to the identity matrix.
+function circuit_error(U)
+    C = circuit(U)  # Creates a circuit from our matrix
+	C_L = QuantumInfo.kraus2liou(C)  # Converts the circuit to a form we can work with
+	return norm(C_L - I)  # Example loss function
+end
+
+# Optimize using gradient descent over the Stiefel Manifold
+out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500; η=0.2, decay_factor=0.9, decay_step=10)
+
+```
+
+![](docs/src/gfx/optimization.png)
 
 
 
