@@ -34,7 +34,7 @@ function compute_kraus(U::AbstractMatrix, rho_d::AbstractMatrix)
             ψ_k[k] = 1
 
             left = kron(ψ_k', I(dim_s))
-            right = kron(I(dim_s), ψ_i)
+            right = kron(ψ_i,   I(dim_s))
 
             kraus = sqrt(p_d[i]) * left * U * right
             kraus_ops[(k - 1, i - 1)] = kraus
