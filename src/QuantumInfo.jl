@@ -3,8 +3,10 @@ using LinearAlgebra, OMEinsum
 
 include("Optimization.jl")
 include("Random.jl")
+include("Distributions.jl")
 export Optimization
 export Random
+export Distributions
 
 mat(v::Vector, r=round(Int, sqrt(length(v))), c=round(Int, sqrt(length(v)))) = reshape(v, r, c)
 

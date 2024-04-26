@@ -30,5 +30,32 @@ function rand_channel(::Type{Array}, r, n)
     return Z
 end
 
+"""
+    rand_density_hs(::Type{Array}, n, r)
+
+Create a random channel from the Hilbert-Shmidt metric
+"""
+function rand_density_hs(::Type{Array}, n, r)
+    X = ginibre_matrix(Array, n, r)
+    rho = X * X'
+    return rho / tr(rho)
+end
+
+
+"""
+    rand_density_bures(::Type{Array}, n, r)
+
+Create a random channel from the Bures metric
+"""
+function rand_density_bures(::Type{Array}, n, r)
+
+    X = ginibre_matrix(Array, n, n) / sqrt(2)
+    f = qr(X)
+
+    rho = I(n) + Matrix(f.Q)
+    rho = rho * ginibre_matrix(Array, n, r)
+    rho = X * X'
+    return rho / tr(rho)
+end
 
 end
