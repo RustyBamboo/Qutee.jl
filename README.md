@@ -45,6 +45,47 @@ or
 pkg> add https://github.com/RustyBamboo/Qutee.jl
 ```
 
+**CUDA**
+
+To use CUDA, please insure the appropriate CUDA drivers are installed. E.g., on Arch linux:
+```
+sudo pacman -S nvidia cuda
+```
+
+
+Then, add "CUDA".
+
+```julia
+using Pkg
+Pkg.add("CUDA")
+```
+or
+```julia
+]
+pkg> add CUDA
+```
+
+**AMDGPU**
+
+To use AMDGPU, please insure the appropriate AMDGPU drivers are installed. E.g., on Arch linux:
+
+```
+sudo pacman -S hip-runtime-amd rocm-core
+sudo pacman -S rocblas rocsparse rocsolver rocrand rocfft rocalution miopen-hip
+```
+
+```julia
+using Pkg
+Pkg.add("AMDGPU")
+```
+or
+```julia
+]
+pkg> add AMDGPU
+```
+
+Use of GPUs can be found in [an example notebook](examples/gpu.ipynb).
+
 # Tools
 
 In this section, we outline the functionality of the code so you can find the best tool for the job!
