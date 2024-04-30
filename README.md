@@ -23,8 +23,8 @@ Qutee.jl is a toolbox for studying and simulating aspects of quantum information
 
 This code aims to achieve the following goals:
 - Construction of quantum circuits as a quantum channel
-- Spectral analysis of quantum dynamical maps
-- Riemannian optimization for quantum channel (circuit) optimization
+- Spectral analysis of quantum dynamical maps [^1]
+- Riemannian optimization for quantum channel (circuit) optimization [^2]
 - Conversion of quantum information forms (Kraus, Choi, Liouville, etc.)
 - Automatic differentiation (AD)
 - GPU support (with AD)
@@ -85,6 +85,39 @@ pkg> add AMDGPU
 ```
 
 Use of GPUs can be found in [an example notebook](examples/gpu.ipynb).
+
+## Citation
+
+If you use Qutee.jl in your work, please consider citing
+
+```bib
+@misc{FastQuantumProcess,
+  title = {Fast {{Quantum Process Tomography}} via {{Riemannian Gradient Descent}}},
+  author = {Volya, Daniel and Nikitin, Andrey and Mishra, Prabhat},
+  year = {2024},
+  month = apr,
+  number = {arXiv:2404.18840},
+  eprint = {2404.18840},
+  primaryclass = {quant-ph},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2404.18840},
+}
+```
+
+```bib
+@misc{QuantumBenchmarkingRandom,
+  title = {Quantum {{Benchmarking}} via {{Random Dynamical Quantum Maps}}},
+  author = {Volya, Daniel and Mishra, Prabhat},
+  year = {2024},
+  month = apr,
+  number = {arXiv:2404.18846},
+  eprint = {2404.18846},
+  primaryclass = {quant-ph},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2404.18846},
+  urldate = {2024-04-30},
+}
+```
 
 # Tools
 
@@ -285,3 +318,9 @@ out_u, history_u = QuantumInfo.Optimization.optimize(rand_U, circuit_error, 500;
 
 - Daniel Volya
 - Andrey Nikitin
+
+### References
+
+[^1]: D. Volya and P. Mishra, *“Quantum Benchmarking via Random Dynamical Quantum Maps”* arXiv, Apr. 29, 2024. [doi: 10.48550/arXiv.2404.18846](https://doi.org/10.48550/arXiv.2404.18846).
+
+[^2]: D. Volya, A. Nikitin, and P. Mishra, *“Fast Quantum Process Tomography via Riemannian Gradient Descent.”* arXiv, Apr. 29, 2024. [doi: 10.48550/arXiv.2404.18840](https://doi.org/10.48550/arXiv.2404.18840).
