@@ -4,9 +4,11 @@ using LinearAlgebra, OMEinsum
 include("Optimization.jl")
 include("Random.jl")
 include("Distributions.jl")
+include("KrausDecompose.jl")
 export Optimization
 export Random
 export Distributions
+export KrausDecompose
 
 mat(v::Vector, r=round(Int, sqrt(length(v))), c=round(Int, sqrt(length(v)))) = reshape(v, r, c)
 
